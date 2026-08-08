@@ -7,6 +7,9 @@ const authRoutes = require("./routes/authRoutes");
 const issueRoutes = require("./routes/issueRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
+const newspaperRoutes = require("./routes/newspaperRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 const errorHandler = require("./middleware/errorHandler");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpec = require("./config/swagger");
@@ -39,6 +42,12 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/issues", issueRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
 app.use("/api/v1/ai", aiRoutes);
+app.use("/api/v1/reviews", reviewRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/v1/newspapers", newspaperRoutes);
+app.use("/api/newspapers", newspaperRoutes);
+app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Backward compatibility - purane URLs bhi chalte rahenge
 app.use("/api/books", bookRoutes);

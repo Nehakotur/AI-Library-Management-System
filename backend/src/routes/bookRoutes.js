@@ -26,7 +26,11 @@ router.post(
   "/add",
   protect,
   authorize("librarian", "admin"),
-  upload.single("coverImage"),
+  upload.fields([
+    { name: "coverImage", maxCount: 1 },
+    { name: "pdf", maxCount: 1 },
+    { name: "audio", maxCount: 1 },
+  ]),
   addBook
 );
 

@@ -47,7 +47,34 @@ const bookSchema = new mongoose.Schema(
 
     coverImageUrl: {
       type: String,
-   },
+    },
+    averageRating: {
+     type: Number,
+     default: 0,
+    },
+
+    numReviews: {
+     type: Number,
+     default: 0,
+    },
+
+    pdfUrl: {
+  type: String,
+},
+
+isFree: {
+  type: Boolean,
+  default: true,
+},
+
+price: {
+  type: Number,
+  default: 0,
+},
+audioUrl: {
+  type: String,
+},
+
   },
   {
     timestamps: true,

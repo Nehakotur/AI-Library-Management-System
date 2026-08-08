@@ -3,6 +3,7 @@ const Issue = require("../models/Issue");
 const User = require("../models/User");
 const AuditLog = require("../models/AuditLog");
 
+
 const getDashboardStats = async (req, res) => {
   try {
     // Total books (alag-alag titles)
@@ -71,6 +72,49 @@ const getCategoryStats = async (req, res) => {
     });
   }
 };
+
+// Most Popular Books (sabse zyada issue hui books)
+const getPopularBooks = async (req, res) => {
+  try {
+    const popularBooks = await Issue.aggregate([
+      {
+        $group: {
+          _id: "$book",
+          issueCount: { $sum: 1 },
+        },
+      },
+      { $sort: { issueCount: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "books",
+          localField: "_id",
+          foreignField: "_id",
+          as: "bookDetails",
+        },
+      },
+      { $unwind: "$bookDetails" },
+      {
+        $project: {
+          title: "$bookDetails.title",
+          author: "$bookDetails.author",
+          coverImageUrl: "$bookDetails.coverImageUrl",
+          issueCount: 1,
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: popularBooks,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 // Get Audit Logs (sirf librarian/admin ke liye)
 const getAuditLogs = async (req, res) => {
   try {
@@ -91,4 +135,4 @@ const getAuditLogs = async (req, res) => {
     });
   }
 };
-module.exports = { getDashboardStats, getCategoryStats, getAuditLogs };
+module.exports = { getDashboardStats, getCategoryStats, getAuditLogs, getPopularBooks };

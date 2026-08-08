@@ -26,7 +26,53 @@ const addBook = async (req, res) => {
       });
 
       book.coverImageUrl = uploadResult.secure_url;
-    }
+    }// Agar cover image upload hui hai, Cloudinary pe daalo
+if (req.files?.coverImage) {
+  const uploadResult = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "library-books" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(req.files.coverImage[0].buffer);
+  });
+
+  book.coverImageUrl = uploadResult.secure_url;
+}
+
+// Agar PDF upload hui hai, Cloudinary pe daalo
+if (req.files?.pdf) {
+  const pdfUploadResult = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "library-pdfs", resource_type: "raw" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(req.files.pdf[0].buffer);
+  });
+
+  book.pdfUrl = pdfUploadResult.secure_url;
+}
+
+// Agar Audiobook upload hui hai, Cloudinary pe daalo
+if (req.files?.audio) {
+  const audioUploadResult = await new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "library-audio", resource_type: "video" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(req.files.audio[0].buffer);
+  });
+
+  book.audioUrl = audioUploadResult.secure_url;
+}
 
     await book.save();
 
