@@ -1,10 +1,48 @@
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-body{
-  font-family: Arial, sans-serif;
-  background:#f4f4f4;
+:root {
+  --color-bg: #F5F3ED;
+  --color-sidebar: #16302C;
+  --color-sidebar-hover: #1F433C;
+  --color-sidebar-active: #24463F;
+  --color-accent: #C9974C;
+  --color-accent-dark: #A97D36;
+  --color-text: #1E2420;
+  --color-text-muted: #6B6A63;
+  --color-card: #FFFFFF;
+  --color-border: #E4DFD2;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.text-mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.book-cover {
+  transition: transform 0.25s ease, filter 0.25s ease;
+  filter: brightness(1.05) saturate(1.05);
+}
+
+.book-cover:hover {
+  transform: translateY(-8px);
+  filter: brightness(1.12) saturate(1.1);
 }

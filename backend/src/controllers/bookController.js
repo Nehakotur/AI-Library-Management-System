@@ -1,16 +1,38 @@
 const Book = require("../models/Book");
 const QRCode = require("qrcode");
 const cloudinary = require("../config/cloudinary");
-
+const bwipjs = require("bwip-js");
 
 // Add Book
 const addBook = async (req, res) => {
   try {
-    const book = await Book.create(req.body);
+    const bookData = { ...req.body };
+
+    // Moods ko comma-separated text se array mein convert karo
+    if (bookData.moods && typeof bookData.moods === "string") {
+      bookData.moods = bookData.moods.split(",").map((m) => m.trim()).filter(Boolean);
+    }
+    const book = await Book.create(bookData);
 
     // QR Code generate karo (book ki _id encode karke)
     const qrCodeDataUrl = await QRCode.toDataURL(book._id.toString());
     book.qrCodeUrl = qrCodeDataUrl;
+
+    // Barcode generate karo (ISBN encode karke)
+try {
+  const barcodeBuffer = await bwipjs.toBuffer({
+    bcid: "code128",
+    text: book.isbn,
+    scale: 3,
+    height: 12,
+    includetext: true,
+    textxalign: "center",
+  });
+
+  book.barcodeUrl = "data:image/png;base64," + barcodeBuffer.toString("base64");
+} catch (barcodeError) {
+  console.error("Barcode generation failed:", barcodeError.message);
+}
 
     // Agar cover image upload hui hai, Cloudinary pe daalo
     if (req.file) {
@@ -126,7 +148,7 @@ const getBooks = async (req, res) => {
   }
 };
 
-// Get Single Book
+// get single book
 const getSingleBook = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -135,6 +157,40 @@ const getSingleBook = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Book Not Found",
+      });
+    }
+
+    // Related books dhoondo - same category ya same mood wali, is book ko chhodkar
+    const relatedBooks = await Book.find({
+      _id: { $ne: book._id },
+      $or: [
+        { category: { $regex: new RegExp("^" + book.category + "$", "i") } },
+        { moods: { $in: (book.moods || []).map((m) => new RegExp("^" + m + "$", "i")) } },
+      ],
+    }).limit(4);
+
+    res.status(200).json({
+      success: true,
+      data: book,
+      relatedBooks,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ISBN/Barcode se book dhoondo
+const getBookByIsbn = async (req, res) => {
+  try {
+    const book = await Book.findOne({ isbn: req.params.isbn });
+
+    if (!book) {
+      return res.status(404).json({
+        success: false,
+        message: "No book found with this ISBN",
       });
     }
 
@@ -210,6 +266,7 @@ module.exports = {
   addBook,
   getBooks,
   getSingleBook,
+  getBookByIsbn,
   updateBook,
   deleteBook,
 };

@@ -74,6 +74,17 @@ price: {
 audioUrl: {
   type: String,
 },
+summary: {
+  type: String,
+},
+
+moods: {
+  type: [String],
+  default: [],
+},
+barcodeUrl: {
+  type: String,
+},
 
   },
   {

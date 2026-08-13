@@ -6,6 +6,7 @@ const {
   addBook,
   getBooks,
   getSingleBook,
+  getBookByIsbn,
   updateBook,
   deleteBook,
 } = require("../controllers/bookController");
@@ -20,7 +21,7 @@ const upload = require("../middleware/uploadMiddleware");
 // Everyone logged in can view books
 router.get("/", protect, getBooks);
 router.get("/:id", protect, getSingleBook);
-
+router.get("/isbn/:isbn", protect, getBookByIsbn);
 // Only Librarian & Admin
 router.post(
   "/add",

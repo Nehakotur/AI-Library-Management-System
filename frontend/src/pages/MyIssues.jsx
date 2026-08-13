@@ -24,7 +24,7 @@ function MyIssues() {
 
   const handleReturn = async (issueId) => {
     try {
-      await axiosInstance.put(`/issues/return/${issueId}`);
+      await axiosInstance.put("/issues/return/" + issueId);
       setMessage("Book returned successfully!");
       fetchMyIssues();
     } catch (err) {
@@ -32,48 +32,100 @@ function MyIssues() {
     }
   };
 
+  const thStyle = {
+    textAlign: "left",
+    padding: "12px 16px",
+    fontSize: "0.75rem",
+    color: "#6B6A63",
+    textTransform: "uppercase",
+    letterSpacing: "0.04em",
+    borderBottom: "2px solid #E4DFD2",
+  };
+
+  const tdStyle = {
+    padding: "14px 16px",
+    borderBottom: "1px solid #E4DFD2",
+    fontSize: "0.9rem",
+  };
+
   return (
-    <div className="container mt-5">
-      <h2 className="mb-4">My Issued Books</h2>
+    <div style={{ padding: "40px 48px", maxWidth: "1100px" }}>
+      <h1 style={{ fontSize: "2rem", marginBottom: "24px" }}>My Issued Books</h1>
 
-      {message && <div className="alert alert-info">{message}</div>}
-      {loading && <p>Loading...</p>}
+      {message && (
+        <div style={{ padding: "12px 16px", backgroundColor: "#FFF8EC", border: "1px solid #C9974C", borderRadius: "8px", marginBottom: "24px", color: "#16302C" }}>
+          {message}
+        </div>
+      )}
+      {loading && <p style={{ color: "#6B6A63" }}>Loading...</p>}
 
-      <table className="table table-bordered">
-        <thead>
-          <tr>
-            <th>Book</th>
-            <th>Issue Date</th>
-            <th>Due Date</th>
-            <th>Status</th>
-            <th>Fine</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {issues.map((issue) => (
-            <tr key={issue._id}>
-              <td>{issue.book?.title}</td>
-              <td>{new Date(issue.issueDate).toLocaleDateString()}</td>
-              <td>{issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : "-"}</td>
-              <td>{issue.status}</td>
-              <td>₹{issue.fine || 0}</td>
-              <td>
-                {issue.status === "issued" && (
-                  <button
-                    className="btn btn-sm btn-warning"
-                    onClick={() => handleReturn(issue._id)}
-                  >
-                    Return
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {!loading && issues.length > 0 && (
+        <div style={{ backgroundColor: "#FFFFFF", borderRadius: "10px", overflow: "hidden", border: "1px solid #E4DFD2" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Book</th>
+                <th style={thStyle}>Issue Date</th>
+                <th style={thStyle}>Due Date</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Fine</th>
+                <th style={thStyle}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {issues.map((issue) => (
+                <tr key={issue._id}>
+                  <td style={tdStyle}>{issue.book?.title}</td>
+                  <td className="text-mono" style={{ ...tdStyle, fontSize: "0.8rem", color: "#6B6A63" }}>
+                    {new Date(issue.issueDate).toLocaleDateString()}
+                  </td>
+                  <td className="text-mono" style={{ ...tdStyle, fontSize: "0.8rem", color: "#6B6A63" }}>
+                    {issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : "-"}
+                  </td>
+                  <td style={tdStyle}>
+                    <span
+                      className="text-mono"
+                      style={{
+                        fontSize: "0.7rem",
+                        padding: "3px 10px",
+                        borderRadius: "20px",
+                        backgroundColor: issue.status === "issued" ? "#FFF8EC" : "#EAF4EC",
+                        color: issue.status === "issued" ? "#A97D36" : "#3F6E52",
+                      }}
+                    >
+                      {issue.status.toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="text-mono" style={{ ...tdStyle, color: issue.fine > 0 ? "#B5473A" : "#6B6A63" }}>
+                    Rs {issue.fine || 0}
+                  </td>
+                  <td style={tdStyle}>
+                    {issue.status === "issued" && (
+                      <button
+                        onClick={() => handleReturn(issue._id)}
+                        style={{
+                          padding: "6px 14px",
+                          backgroundColor: "#C9974C",
+                          color: "#16302C",
+                          border: "none",
+                          borderRadius: "6px",
+                          fontWeight: "600",
+                          fontSize: "0.8rem",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Return
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {!loading && issues.length === 0 && <p>No issued books found.</p>}
+      {!loading && issues.length === 0 && <p style={{ color: "#6B6A63" }}>No issued books found.</p>}
     </div>
   );
 }
