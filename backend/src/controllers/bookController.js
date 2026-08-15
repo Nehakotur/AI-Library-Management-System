@@ -206,6 +206,71 @@ const getBookByIsbn = async (req, res) => {
   }
 };
 
+const Issue = require("../models/Issue");
+const Review = require("../models/Review");
+
+// Personalized Recommendations - user ki history ke hisaab se
+const getPersonalizedRecommendations = async (req, res) => {
+  try {
+    // User ki issue history aur reviews dekhte hain
+    const userIssues = await Issue.find({ user: req.user.id }).populate("book", "category moods");
+    const userReviews = await Review.find({ user: req.user.id }).populate("book", "category moods");
+
+    // Categories aur moods collect karo jo user ne pehle padhi/rate ki hain
+    const categoriesSet = new Set();
+    const moodsSet = new Set();
+
+    userIssues.forEach((issue) => {
+      if (issue.book?.category) categoriesSet.add(issue.book.category);
+      (issue.book?.moods || []).forEach((m) => moodsSet.add(m));
+    });
+
+    userReviews.forEach((review) => {
+      if (review.rating >= 4 && review.book?.category) {
+        categoriesSet.add(review.book.category);
+      }
+      if (review.rating >= 4) {
+        (review.book?.moods || []).forEach((m) => moodsSet.add(m));
+      }
+    });
+
+    const categories = Array.from(categoriesSet);
+    const moods = Array.from(moodsSet);
+
+    // Agar user ki koi history hi nahi hai, to popular books dikha do
+    if (categories.length === 0 && moods.length === 0) {
+      const fallback = await Book.find().sort({ numReviews: -1 }).limit(6);
+      return res.status(200).json({
+        success: true,
+        personalized: false,
+        data: fallback,
+      });
+    }
+
+    // Already issued books ki IDs (repeat suggest na ho)
+    const alreadyIssuedIds = userIssues.map((i) => i.book?._id?.toString());
+
+    const recommendations = await Book.find({
+      _id: { $nin: alreadyIssuedIds },
+      $or: [
+        { category: { $in: categories } },
+        { moods: { $in: moods } },
+      ],
+    }).limit(6);
+
+    res.status(200).json({
+      success: true,
+      personalized: true,
+      data: recommendations,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Update Book
 const updateBook = async (req, res) => {
   try {
@@ -267,6 +332,7 @@ module.exports = {
   getBooks,
   getSingleBook,
   getBookByIsbn,
+  getPersonalizedRecommendations,
   updateBook,
   deleteBook,
 };

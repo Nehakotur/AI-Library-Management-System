@@ -7,6 +7,7 @@ const {
   getBooks,
   getSingleBook,
   getBookByIsbn,
+  getPersonalizedRecommendations,
   updateBook,
   deleteBook,
 } = require("../controllers/bookController");
@@ -22,6 +23,7 @@ const upload = require("../middleware/uploadMiddleware");
 router.get("/", protect, getBooks);
 router.get("/:id", protect, getSingleBook);
 router.get("/isbn/:isbn", protect, getBookByIsbn);
+router.get("/recommendations/for-me", protect, getPersonalizedRecommendations);
 // Only Librarian & Admin
 router.post(
   "/add",
