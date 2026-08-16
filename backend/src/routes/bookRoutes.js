@@ -6,10 +6,11 @@ const {
   addBook,
   getBooks,
   getSingleBook,
-  getBookByIsbn,
-  getPersonalizedRecommendations,
   updateBook,
   deleteBook,
+  getBookByIsbn,
+  getPersonalizedRecommendations,
+  scanCoverImage,
 } = require("../controllers/bookController");
 
 const {
@@ -24,6 +25,7 @@ router.get("/", protect, getBooks);
 router.get("/:id", protect, getSingleBook);
 router.get("/isbn/:isbn", protect, getBookByIsbn);
 router.get("/recommendations/for-me", protect, getPersonalizedRecommendations);
+router.post("/scan-cover", protect, authorize("librarian", "admin"), upload.single("coverImage"), scanCoverImage);
 // Only Librarian & Admin
 router.post(
   "/add",

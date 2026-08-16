@@ -2,6 +2,11 @@ const Book = require("../models/Book");
 const QRCode = require("qrcode");
 const cloudinary = require("../config/cloudinary");
 const bwipjs = require("bwip-js");
+const Anthropic = require("@anthropic-ai/sdk");
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 // Add Book
 const addBook = async (req, res) => {
@@ -271,6 +276,60 @@ const getPersonalizedRecommendations = async (req, res) => {
   }
 };
 
+// AI Vision - cover image se book details nikalo
+const scanCoverImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Please upload a cover image",
+      });
+    }
+
+    const base64Image = req.file.buffer.toString("base64");
+    const mimeType = req.file.mimetype;
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 300,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mimeType,
+                data: base64Image,
+              },
+            },
+            {
+              type: "text",
+              text: `Look at this book cover image and extract the details. Respond ONLY in this exact JSON format, no other text:
+{"title": "<book title>", "author": "<author name if visible, else empty string>", "category": "<best guess genre like Fiction, Self-Help, Programming etc>"}`,
+            },
+          ],
+        },
+      ],
+    });
+
+    const raw = response.content[0].text.trim();
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const details = JSON.parse(cleaned);
+
+    res.status(200).json({
+      success: true,
+      data: details,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Update Book
 const updateBook = async (req, res) => {
   try {
@@ -333,6 +392,7 @@ module.exports = {
   getSingleBook,
   getBookByIsbn,
   getPersonalizedRecommendations,
+  scanCoverImage,
   updateBook,
   deleteBook,
 };
