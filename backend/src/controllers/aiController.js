@@ -148,4 +148,144 @@ User ki query: "${query}"`,
   }
 };
 
-module.exports = { chatWithAI, semanticSearch };
+// Multi-Agent System - Master Agent jo decide karta hai kaunsa tool use karna hai
+const smartAssistant = async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a message",
+      });
+    }
+
+    const tools = [
+      {
+        name: "search_books",
+        description: "Search for books in the library by meaning/topic, not just keywords",
+        input_schema: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "what the user is looking for" },
+          },
+          required: ["query"],
+        },
+      },
+      {
+        name: "check_availability",
+        description: "Check how many copies of a specific book title are available",
+        input_schema: {
+          type: "object",
+          properties: {
+            title: { type: "string", description: "the book title to check" },
+          },
+          required: ["title"],
+        },
+      },
+      {
+        name: "get_popular_books",
+        description: "Get the most popular/most issued books in the library",
+        input_schema: { type: "object", properties: {} },
+      },
+    ];
+
+    // Step 1: Claude ko decide karne do kaunsa tool chahiye
+    const firstResponse = await anthropic.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 500,
+      tools: tools,
+      messages: [{ role: "user", content: message }],
+    });
+
+    // Agar Claude ne koi tool use nahi kiya, seedha reply de do
+    const toolUse = firstResponse.content.find((block) => block.type === "tool_use");
+
+    if (!toolUse) {
+      const textBlock = firstResponse.content.find((block) => block.type === "text");
+      return res.status(200).json({
+        success: true,
+        reply: textBlock ? textBlock.text : "I'm not sure how to help with that.",
+      });
+    }
+
+    // Step 2: Jo tool Claude ne choose kiya, usko actually execute karo
+    let toolResult = "";
+
+    if (toolUse.name === "search_books") {
+      const books = await Book.find().select("title author category summary moods available");
+      const booksListText = books
+        .map((b, i) => `${i}. "${b.title}" by ${b.author} | ${b.category} | ${b.summary || ""}`)
+        .join("\n");
+
+      const searchResponse = await anthropic.messages.create({
+        model: "claude-sonnet-5",
+        max_tokens: 200,
+        messages: [
+          {
+            role: "user",
+            content: `Books:\n${booksListText}\n\nQuery: "${toolUse.input.query}"\n\nReturn only the numbers of the 3 most relevant books, comma separated.`,
+          },
+        ],
+      });
+
+      const indices = searchResponse.content[0].text
+        .trim()
+        .split(",")
+        .map((n) => parseInt(n.trim()))
+        .filter((n) => !isNaN(n) && n >= 0 && n < books.length);
+
+      toolResult = indices.map((i) => books[i].title + " by " + books[i].author).join(", ") || "No matching books found";
+    } else if (toolUse.name === "check_availability") {
+      const book = await Book.findOne({ title: new RegExp(toolUse.input.title, "i") });
+      toolResult = book
+        ? book.title + " has " + book.quantity + " copies, available: " + book.available
+        : "Book not found";
+    } else if (toolUse.name === "get_popular_books") {
+      const popular = await Issue.aggregate([
+        { $group: { _id: "$book", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+        { $lookup: { from: "books", localField: "_id", foreignField: "_id", as: "book" } },
+        { $unwind: "$book" },
+      ]);
+      toolResult = popular.map((p) => p.book.title + " (" + p.count + " issues)").join(", ") || "No data yet";
+    }
+
+    // Step 3: Tool result ke saath final jawab banao
+    const finalResponse = await anthropic.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 400,
+      tools: tools,
+      messages: [
+        { role: "user", content: message },
+        { role: "assistant", content: firstResponse.content },
+        {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: toolUse.id,
+              content: toolResult,
+            },
+          ],
+        },
+      ],
+    });
+
+    const finalText = finalResponse.content.find((block) => block.type === "text");
+
+    res.status(200).json({
+      success: true,
+      reply: finalText ? finalText.text : toolResult,
+      toolUsed: toolUse.name,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+module.exports = { chatWithAI, semanticSearch, smartAssistant };

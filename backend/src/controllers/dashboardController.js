@@ -2,6 +2,11 @@ const Book = require("../models/Book");
 const Issue = require("../models/Issue");
 const User = require("../models/User");
 const AuditLog = require("../models/AuditLog");
+const Anthropic = require("@anthropic-ai/sdk");
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 
 const getDashboardStats = async (req, res) => {
@@ -115,6 +120,84 @@ const getPopularBooks = async (req, res) => {
     });
   }
 };
+
+// AI Demand Forecasting - trends dekhke predict karo
+const getDemandForecast = async (req, res) => {
+  try {
+    // Pichle 30 din ke issues, category ke saath
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const recentIssues = await Issue.find({ issueDate: { $gte: thirtyDaysAgo } }).populate(
+      "book",
+      "title category"
+    );
+
+    if (recentIssues.length === 0) {
+      return res.status(200).json({
+        success: true,
+        hasForecast: false,
+        message: "Not enough recent activity to generate a forecast",
+      });
+    }
+
+    // Category-wise issue count (last 30 days)
+    const categoryCount = {};
+    recentIssues.forEach((issue) => {
+      const cat = issue.book?.category;
+      if (!cat) return;
+      categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+    });
+
+    const categorySummary = Object.entries(categoryCount)
+      .map(([cat, count]) => cat + ": " + count + " issues in last 30 days")
+      .join("\n");
+
+    // Current stock per category
+    const books = await Book.find().select("category quantity");
+    const stockByCategory = {};
+    books.forEach((b) => {
+      stockByCategory[b.category] = (stockByCategory[b.category] || 0) + b.quantity;
+    });
+
+    const stockSummary = Object.entries(stockByCategory)
+      .map(([cat, qty]) => cat + ": " + qty + " copies currently in stock")
+      .join("\n");
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-5",
+      max_tokens: 400,
+      messages: [
+        {
+          role: "user",
+          content: `You are a library demand forecasting assistant. Based on the recent borrowing trends and current stock levels below, identify which categories are likely to be in high demand next month and whether stock seems sufficient. Respond ONLY in this JSON format:
+{"forecasts": [{"category": "<name>", "trend": "rising|stable|declining", "recommendation": "<one short actionable sentence>"}]}
+
+Recent 30-day borrowing activity:
+${categorySummary}
+
+Current stock levels:
+${stockSummary}`,
+        },
+      ],
+    });
+
+    const raw = response.content[0].text.trim();
+    const cleaned = raw.replace(/```json|```/g, "").trim();
+    const forecast = JSON.parse(cleaned);
+
+    res.status(200).json({
+      success: true,
+      hasForecast: true,
+      data: forecast.forecasts,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 // Get Audit Logs (sirf librarian/admin ke liye)
 const getAuditLogs = async (req, res) => {
   try {
@@ -135,4 +218,4 @@ const getAuditLogs = async (req, res) => {
     });
   }
 };
-module.exports = { getDashboardStats, getCategoryStats, getAuditLogs, getPopularBooks };
+module.exports = { getDashboardStats, getCategoryStats, getAuditLogs, getPopularBooks, getDemandForecast, };
